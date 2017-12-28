@@ -12,7 +12,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
-import gui.MP3Player;
+import gui.MP3PlayerGUI;
 
 public class SkinUtils{
 	
@@ -20,7 +20,7 @@ public class SkinUtils{
 		try {
 			UIManager.setLookAndFeel(lookAndFeel);
 		} catch (UnsupportedLookAndFeelException ex) {
-			Logger.getLogger(MP3Player.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(MP3PlayerGUI.class.getName()).log(Level.SEVERE, null, ex);
 		}
 		SwingUtilities.updateComponentTreeUI(component);
 	}
@@ -37,7 +37,7 @@ public class SkinUtils{
 				Logger.getLogger(SkinUtils.class.getName()).log(Level.SEVERE, null, e);
 			}
 		} catch (UnsupportedLookAndFeelException ex) {
-			Logger.getLogger(MP3Player.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(MP3PlayerGUI.class.getName()).log(Level.SEVERE, null, ex);
 		}
 		SwingUtilities.updateComponentTreeUI(component);
 	}

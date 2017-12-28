@@ -28,7 +28,7 @@ public class FileUtils {
 		if (index > 0 && index <= file.getName().length() - 2) {
 			return file.getName().substring(0, index);
 		}
-		return "noname";
+		return fileName;
 	}
 
 	// Get file extension
