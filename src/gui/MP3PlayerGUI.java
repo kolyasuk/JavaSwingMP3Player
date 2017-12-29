@@ -67,6 +67,7 @@ public class MP3PlayerGUI extends JFrame {
 	private int sliderValue;
 	private String currentSong;
 	private int[] indexPlayList;
+	private JTextField txtVolumeStatus;
 
 	/**
 	 * Launch the application.
@@ -274,14 +275,21 @@ public class MP3PlayerGUI extends JFrame {
 			@Override
 			public void mouseExited(MouseEvent e) {
 				slideVolume.setVisible(false);
+				txtVolumeStatus.setVisible(false);
 			}
 		});
+
+		txtVolumeStatus = new JTextField();
+		txtVolumeStatus.setVisible(false);
+		txtVolumeStatus.setHorizontalAlignment(SwingConstants.CENTER);
+		txtVolumeStatus.setBounds(145, 260, 30, 23);
+		panelMain.add(txtVolumeStatus);
+		txtVolumeStatus.setColumns(3);
 		slideVolume.setPaintLabels(true);
 		slideVolume.setAlignmentY(Component.TOP_ALIGNMENT);
 		slideVolume.setBorder(new LineBorder(new Color(0, 102, 255), 2, true));
 		slideVolume.setSnapToTicks(true);
 		slideVolume.setMinorTickSpacing(5);
-		slideVolume.setMaximum(200);
 		slideVolume.setBounds(171, 260, 98, 23);
 		panelMain.add(slideVolume);
 		sliderValue = slideVolume.getValue();
@@ -332,17 +340,18 @@ public class MP3PlayerGUI extends JFrame {
 		togglePlayPauseButton.setBounds(122, 256, 30, 30);
 		panelMain.add(togglePlayPauseButton);
 
-		JLabel label = new JLabel("+");
-		label.addMouseListener(new MouseAdapter() {
+		JLabel lblShowVolume = new JLabel("+");
+		lblShowVolume.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				slideVolume.setVisible(true);
+				txtVolumeStatus.setVisible(true);
 			}
 		});
-		label.setHorizontalAlignment(SwingConstants.CENTER);
-		label.setFont(new Font("Tahoma", Font.PLAIN, 20));
-		label.setBounds(221, 260, 20, 18);
-		panelMain.add(label);
+		lblShowVolume.setHorizontalAlignment(SwingConstants.CENTER);
+		lblShowVolume.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		lblShowVolume.setBounds(221, 260, 20, 18);
+		panelMain.add(lblShowVolume);
 
 		JLabel lblPlayingSong = new JLabel("Playing song");
 		lblPlayingSong.addMouseListener(new MouseAdapter() {
@@ -430,6 +439,7 @@ public class MP3PlayerGUI extends JFrame {
 					sliderValue = slideVolume.getValue();
 				}
 				player.setVolume(slideVolume.getValue(), slideVolume.getMaximum());
+				txtVolumeStatus.setText(slideVolume.getValue() + "");
 			}
 		});
 
@@ -492,6 +502,7 @@ public class MP3PlayerGUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				player.stop();
 				togglePlayPauseButton.setSelected(false);
+				currentSong = "";
 			}
 		});
 
