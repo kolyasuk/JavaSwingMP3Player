@@ -4,6 +4,7 @@ import java.io.File;
 
 import javazoom.jlgui.basicplayer.BasicPlayer;
 import javazoom.jlgui.basicplayer.BasicPlayerException;
+import javazoom.jlgui.basicplayer.BasicPlayerListener;
 
 public class Mp3Player {
 
@@ -12,6 +13,10 @@ public class Mp3Player {
 	private String currentFileName;
 	private double currentVolumeValue;
 
+	public Mp3Player(BasicPlayerListener listener) {
+		player.addBasicPlayerListener(listener);
+	}
+	
 	public void play(String fileName) {
 		try {
 			if (currentFileName != null && currentFileName.equals(fileName) && player.getStatus() == BasicPlayer.PAUSED) {
@@ -59,6 +64,17 @@ public class Mp3Player {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	public void jump(long bytes) {
+		try {
+			player.seek(bytes);
+			player.setGain(currentVolumeValue);
+		} catch (BasicPlayerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	private double calcVolume(int currentVolume, int maximumVolume) {

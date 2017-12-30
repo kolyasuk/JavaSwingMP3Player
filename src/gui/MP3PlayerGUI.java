@@ -10,8 +10,10 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Map;
 
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
@@ -42,13 +44,18 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
+import javazoom.jlgui.basicplayer.BasicController;
+import javazoom.jlgui.basicplayer.BasicPlayerEvent;
+import javazoom.jlgui.basicplayer.BasicPlayerListener;
 import objects.Mp3;
 import objects.Mp3Player;
 import utils.FileUtils;
 import utils.Mp3PlayerFileFilter;
 import utils.SkinUtils;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
-public class MP3PlayerGUI extends JFrame {
+public class MP3PlayerGUI extends JFrame implements BasicPlayerListener {
 
 	private static final String MP3_FILE_EXTENSION = "mp3";
 	private static final String MP3_FILE_DESCRIPTION = "Mp3 files";
@@ -63,17 +70,27 @@ public class MP3PlayerGUI extends JFrame {
 	private DefaultListModel mp3ListModel = new DefaultListModel<>();
 	private Mp3PlayerFileFilter mp3FileFilter = new Mp3PlayerFileFilter(MP3_FILE_EXTENSION, MP3_FILE_DESCRIPTION);
 	private Mp3PlayerFileFilter playListFileFilter = new Mp3PlayerFileFilter(PLAYLIST_FILE_EXTENSION, PLAYLIST_FILE_DESCRIPTION);
-	private Mp3Player player = new Mp3Player();
+	private Mp3Player player = new Mp3Player(this);
+	private JTextField txtVolumeStatus;
+	private JList lstPlayList;
+	private JSlider slideVolume;
+	private JLabel lblPlayingSong;
+	private JSlider sliderProgress;
 	private int sliderValue;
 	private String currentSong;
 	private int[] indexPlayList;
-	private JTextField txtVolumeStatus;
-
+	private long duration;
+	private int bytesLen;
+	private long secondsAmount;
+	private double posValue = 0.0;
+    private boolean movingFromJump = false;
+    private boolean moveAutomatic = false;
+	
 	/**
 	 * Launch the application.
 	 */
 
-	public static void main(String[] args) {
+	public static void main(String[] args){
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -115,11 +132,7 @@ public class MP3PlayerGUI extends JFrame {
 		menuFile.add(menuOpenPlaylist);
 
 		JMenuItem menuSavePlaylist = new JMenuItem("Save playlist");
-		menuSavePlaylist.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				menuSavePlaylistActionPerformer(fileChooser, e);
-			}
-		});
+		
 		menuSavePlaylist.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/save_16.png")));
 		menuFile.add(menuSavePlaylist);
 
@@ -129,7 +142,7 @@ public class MP3PlayerGUI extends JFrame {
 		JMenuItem menuExit = new JMenuItem("Exit");
 		menuExit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				MP3PlayerGUI.this.dispose();
+				System.exit(0);
 			}
 		});
 		menuExit.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/exit.png")));
@@ -200,7 +213,9 @@ public class MP3PlayerGUI extends JFrame {
 		jScrollPane2.setBounds(10, 46, 259, 180);
 		panelMain.add(jScrollPane2);
 
-		JList lstPlayList = new JList();
+		lstPlayList = new JList();
+
+		
 		lstPlayList.setModel(mp3ListModel);
 		jScrollPane2.setViewportView(lstPlayList);
 
@@ -208,41 +223,40 @@ public class MP3PlayerGUI extends JFrame {
 		addPopup(lstPlayList, popupMenu);
 
 		JMenuItem mntmAddSong = new JMenuItem("Add song");
-		mntmAddSong.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				btnAddSongActionPerformer(fileChooser);
-			}
-		});
+
 		mntmAddSong.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/plus_16.png")));
 		popupMenu.add(mntmAddSong);
 
 		JMenuItem mntmDeleteSong = new JMenuItem("Delete song");
-		mntmDeleteSong.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				btnDeleteSongActionPerformer(lstPlayList);
-			}
-		});
+
 
 		mntmDeleteSong.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/remove_icon.png")));
 		popupMenu.add(mntmDeleteSong);
 
 		JMenuItem mntmOpenPlaylist = new JMenuItem("Open playlist");
-		mntmOpenPlaylist.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				menuOpenPlaylistActionPerformer(fileChooser, lstPlayList);
-			}
-		});
+
 		mntmOpenPlaylist.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/open-icon.png")));
 		popupMenu.add(mntmOpenPlaylist);
 
-		JMenuItem mntmSavePlaylist = new JMenuItem("Save playlist");
-		mntmSavePlaylist.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				menuSavePlaylistActionPerformer(fileChooser, e);
-			}
-		});
-		mntmSavePlaylist.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/save_16.png")));
-		popupMenu.add(mntmSavePlaylist);
+		JMenuItem mntmClearPlaylist = new JMenuItem("Clear playlist");
+
+		mntmClearPlaylist.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/exit.png")));
+		popupMenu.add(mntmClearPlaylist);
+		
+		JMenuItem mntmPlay = new JMenuItem("Play");
+
+		mntmPlay.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/Play.png")));
+		popupMenu.add(mntmPlay);
+		
+		JMenuItem mntmPause = new JMenuItem("Pause");
+
+		mntmPause.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/Pause-icon.png")));
+		popupMenu.add(mntmPause);
+		
+		JMenuItem mntmStop = new JMenuItem("Stop");
+
+		mntmStop.setIcon(new ImageIcon(MP3PlayerGUI.class.getResource("/images/stop-red-icon.png")));
+		popupMenu.add(mntmStop);
 
 		JButton btnDeleteSong = new JButton("");
 		btnDeleteSong.addActionListener(new ActionListener() {
@@ -269,7 +283,7 @@ public class MP3PlayerGUI extends JFrame {
 		btnSelectNext.setBounds(199, 9, 30, 23);
 		panelMain.add(btnSelectNext);
 
-		JSlider slideVolume = new JSlider();
+		slideVolume = new JSlider();
 		slideVolume.setVisible(false);
 		slideVolume.addMouseListener(new MouseAdapter() {
 			@Override
@@ -283,6 +297,7 @@ public class MP3PlayerGUI extends JFrame {
 		txtVolumeStatus.setVisible(false);
 		txtVolumeStatus.setHorizontalAlignment(SwingConstants.CENTER);
 		txtVolumeStatus.setBounds(145, 260, 30, 23);
+		txtVolumeStatus.setText(slideVolume.getValue()+"");
 		panelMain.add(txtVolumeStatus);
 		txtVolumeStatus.setColumns(3);
 		slideVolume.setPaintLabels(true);
@@ -318,7 +333,6 @@ public class MP3PlayerGUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				btnSelectNextSongActionPerformer(lstPlayList);
 				btnPlaySongActionPerformer(lstPlayList, slideVolume);
-
 			}
 		});
 		btnNextSong.setToolTipText("Next song");
@@ -352,33 +366,113 @@ public class MP3PlayerGUI extends JFrame {
 		lblShowVolume.setFont(new Font("Tahoma", Font.PLAIN, 20));
 		lblShowVolume.setBounds(221, 260, 20, 18);
 		panelMain.add(lblShowVolume);
+		
+		txtSearch.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent arg0) {
+				if(arg0.getKeyCode()==KeyEvent.VK_ENTER) {
+					btnSearchActionPerformer(lstPlayList);
+				}
+			}
+		});
 
-		JLabel lblPlayingSong = new JLabel("Playing song");
+		lblPlayingSong = new JLabel("Playing song");
 		lblPlayingSong.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if (indexPlayList != null) {
 					lstPlayList.setSelectedIndex(indexPlayList[0]);
+					togglePlayPauseButton.setSelected(true);
 				}
 			}
 		});
+		
+		
 		lblPlayingSong.setBounds(0, 31, 279, 14);
 		panelMain.add(lblPlayingSong);
 		lblPlayingSong.setHorizontalAlignment(SwingConstants.CENTER);
-
+		
+		sliderProgress = new JSlider();
+		sliderProgress.setMaximum(1000);
+		sliderProgress.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent arg0) {
+				if(sliderProgress.getValueIsAdjusting() ==false) {
+					if(moveAutomatic == true) {
+						moveAutomatic =false;
+						posValue = sliderProgress.getValue() * 1.0 / 1000;
+						processSeek(posValue);
+					}
+				}else {
+					moveAutomatic = true;
+					movingFromJump = true;
+				}
+			}
+		});
+		sliderProgress.setValue(0);
+		sliderProgress.setBounds(10, 229, 259, 23);
+		panelMain.add(sliderProgress);
+		
 		menuOpenPlaylist.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				menuOpenPlaylistActionPerformer(fileChooser, lstPlayList);
 			}
 		});
-
+		
+		menuSavePlaylist.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				menuSavePlaylistActionPerformer(fileChooser, e);
+			}
+		});
+		
+		mntmAddSong.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				btnAddSongActionPerformer(fileChooser);
+			}
+		});
+		
+		mntmDeleteSong.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				btnDeleteSongActionPerformer(lstPlayList);
+			}
+		});
+		
+		mntmOpenPlaylist.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				menuOpenPlaylistActionPerformer(fileChooser, lstPlayList);
+			}
+		});
+		
+		mntmClearPlaylist.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				mp3ListModel.clear();
+			}
+		});
+		
+		mntmPlay.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				btnPlaySongActionPerformer(lstPlayList, slideVolume);
+			}
+		});
+		
+		
+		mntmPause.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				player.pause();
+			}
+		});
+		
+		mntmStop.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				player.stop();
+			}
+		});
+		
 		togglePlayPauseButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (!togglePlayPauseButton.isSelected())
 					player.pause();
 				else {
 					btnPlaySongActionPerformer(lstPlayList, slideVolume);
-					lblPlayingSong.setText(currentSong);
 				}
 
 			}
@@ -386,32 +480,7 @@ public class MP3PlayerGUI extends JFrame {
 
 		btnSearch.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String searchStr = txtSearch.getText();
-				if (searchStr == null || searchStr.equals(EMPTY_STRING))
-					return;
-				ArrayList<Integer> mp3FindedIndexes = new ArrayList<>();
-
-				for (int i = 0; i < mp3ListModel.size(); i++) {
-					Mp3 mp3 = (Mp3) mp3ListModel.get(i);
-
-					if (mp3.getName().toUpperCase().contains(searchStr.toUpperCase())) {
-						mp3FindedIndexes.add(i);
-					}
-				}
-
-				int[] selectIndexes = new int[mp3FindedIndexes.size()];
-
-				if (selectIndexes.length == 0) {
-					JOptionPane.showMessageDialog(MP3PlayerGUI.this, "Don't find \"" + searchStr + "\"");
-					txtSearch.requestFocus();
-					txtSearch.selectAll();
-					return;
-				}
-
-				for (int i = 0; i < selectIndexes.length; i++) {
-					selectIndexes[i] = mp3FindedIndexes.get(i).intValue();
-				}
-				lstPlayList.setSelectedIndices(selectIndexes);
+				btnSearchActionPerformer(lstPlayList);
 			}
 		});
 
@@ -487,17 +556,6 @@ public class MP3PlayerGUI extends JFrame {
 			}
 		});
 
-		lstPlayList.addListSelectionListener(new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent e) {
-				int[] indexPlayList = lstPlayList.getSelectedIndices();
-				Mp3 mp3 = (Mp3) mp3ListModel.getElementAt(indexPlayList[0]);
-				if (!mp3.getName().equals(currentSong)) {
-					togglePlayPauseButton.setSelected(false);
-				} else
-					togglePlayPauseButton.setSelected(true);
-			}
-		});
-
 		btnStopSong.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				player.stop();
@@ -505,8 +563,40 @@ public class MP3PlayerGUI extends JFrame {
 				currentSong = "";
 			}
 		});
-
+		
+		lstPlayList.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent arg0) {
+				if(arg0.getKeyCode()==KeyEvent.VK_ENTER) {
+					if(!togglePlayPauseButton.isSelected()) {
+						btnPlaySongActionPerformer(lstPlayList, slideVolume);
+						togglePlayPauseButton.setSelected(true);
+					}else {
+						player.pause();
+						togglePlayPauseButton.setSelected(false);
+					}
+				}
+				
+			}
+		});
+		
+		lstPlayList.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				// TODO Auto-generated method stub
+				int[] indexPlayList = lstPlayList.getSelectedIndices();
+				if (indexPlayList.length > 0) {
+					Mp3 mp3 = (Mp3) mp3ListModel.getElementAt(indexPlayList[0]);
+					if (mp3.getName().equals(currentSong)) {
+						togglePlayPauseButton.setSelected(true);
+					} else
+						togglePlayPauseButton.setSelected(false);
+				}
+				
+			}
+		});
 	}
+
 
 	private void btnAddSongActionPerformer(JFileChooser fileChooser) {
 		FileUtils.addFileFilter(fileChooser, mp3FileFilter);
@@ -526,6 +616,36 @@ public class MP3PlayerGUI extends JFrame {
 				JOptionPane.showMessageDialog(MP3PlayerGUI.this, "Song(s): \n" + BORDER + duplicateSongs + BORDER + "are duplicated and don't added to playlist");
 			}
 		}
+	}
+	
+	private void btnSearchActionPerformer(JList lstPlayList) {
+		String searchStr = txtSearch.getText();
+		if (searchStr == null || searchStr.equals(EMPTY_STRING) || searchStr.equals(INPUT_SONG_NAME))
+			return;
+		ArrayList<Integer> mp3FindedIndexes = new ArrayList<>();
+
+		for (int i = 0; i < mp3ListModel.size(); i++) {
+			Mp3 mp3 = (Mp3) mp3ListModel.get(i);
+
+			if (mp3.getName().toUpperCase().contains(searchStr.toUpperCase())) {
+				mp3FindedIndexes.add(i);
+			}
+		}
+
+		int[] selectIndexes = new int[mp3FindedIndexes.size()];
+
+		if (selectIndexes.length == 0) {
+			JOptionPane.showMessageDialog(MP3PlayerGUI.this, "Don't find \"" + searchStr + "\"");
+			txtSearch.requestFocus();
+			txtSearch.selectAll();
+			return;
+		}
+
+		for (int i = 0; i < selectIndexes.length; i++) {
+			selectIndexes[i] = mp3FindedIndexes.get(i).intValue();
+		}
+		lstPlayList.setSelectedIndices(selectIndexes);
+		
 	}
 
 	private void btnDeleteSongActionPerformer(JList lstPlayList) {
@@ -621,6 +741,27 @@ public class MP3PlayerGUI extends JFrame {
 			player.setVolume(sliderValue, slideVolume.getMaximum());
 		}
 	}
+	
+	private boolean selectNextSong(JList lstPlayList) {
+		int nextIndex = lstPlayList.getSelectedIndex() + 1;
+		// if in list size
+		if (nextIndex <= lstPlayList.getModel().getSize() - 1) {
+			lstPlayList.setSelectedIndex(nextIndex);
+			return true;
+		}
+		return false;
+	}
+	
+    private void processSeek(double bytes) {
+        try {
+            long skipBytes = (long) Math.round(((Integer) bytesLen).intValue() * bytes);
+            player.jump(skipBytes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            movingFromJump = false;
+        }
+
+    }
 
 	private static void addPopup(Component component, final JPopupMenu popup) {
 		component.addMouseListener(new MouseAdapter() {
@@ -642,5 +783,56 @@ public class MP3PlayerGUI extends JFrame {
 
 		});
 
+	}
+
+	@Override
+	public void opened(Object o, Map map) {
+		duration = (long) Math.round((((Long) map.get("duration")).longValue())/1000000);
+		bytesLen = (int) Math.round(((Integer) map.get("mp3.length.bytes")).intValue());
+		
+		String songName = map.get("title") != null ? map.get("title").toString() : FileUtils.getFileNameWithoutExtension(new File(o.toString()).getName());
+		if(songName.length()>35) {
+			songName = songName.substring(0, 35) + "...";
+		}
+		lblPlayingSong.setText(songName);
+	}
+
+	@Override
+	public void progress(int bytesread, long microseconds, byte[] pcmdata, Map properties) {
+		float progress = -1.0f;
+		
+		if((bytesread>0) && (duration>0)) {
+			progress = bytesread * 1.0f /bytesLen *1.0f;
+		}
+		
+		secondsAmount = (long) (duration * progress);
+		
+		if(duration != 0) {
+			if(movingFromJump == false) {
+				sliderProgress.setValue(((int) Math.round(secondsAmount * 1000 /duration)));
+			}
+		}
+		
+	}
+
+	@Override
+	public void setController(BasicController arg0) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void stateUpdated(BasicPlayerEvent bpe) {
+		int state = bpe.getCode();
+		
+		if(state == BasicPlayerEvent.PLAYING) {
+			movingFromJump = false;
+		}else if(state == BasicPlayerEvent.SEEKING) {
+			movingFromJump = true;
+		}else if(state == BasicPlayerEvent.EOM) {
+			if(selectNextSong(lstPlayList)) {
+				btnPlaySongActionPerformer(lstPlayList, slideVolume);
+			}
+		}
 	}
 }
